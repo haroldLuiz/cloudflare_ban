@@ -10,6 +10,7 @@ import ipaddr
 ######CF
 auth_email="xpto@xpto.com"
 auth_key="000000000000000"
+time_zone_d = datetime.timedelta(minutes=180) # DIferença da sua timezone pra da cloudflare
 ######CF
 cf_headers = {
 	'X-Auth-Email': auth_email,
@@ -24,9 +25,9 @@ cf_banned_ips = []
 
 def cf_get_events(minutes):
 	data = '{"operationName": "ActivityLogQuery","variables": { "zoneTag": "000000000000000", "filter": { "AND": [{ "datetime_geq": "%s", "datetime_leq": "%s" }, { "OR": [{ "action": "managed_challenge" }, { "action":"block" }] }, { "AND": [{ "action_neq": "challenge_solved" }, { "action_neq": "challenge_failed" }, { "action_neq": "challenge_bypassed" }, { "action_neq": "jschallenge_solved" }, { "action_neq": "jschallenge_failed" }, { "action_neq": "jschallenge_bypassed" }, { "action_neq": "managed_challenge_skipped" }, { "action_neq": "managed_challenge_non_interactive_solved" }, { "action_neq": "managed_challenge_interactive_solved" }, { "action_neq": "managed_challenge_bypassed" }, { "OR": [{ "ruleId_like": "999___" }, { "ruleId_like": "900___" }, { "ruleId": "981176" }, { "AND": [{ "ruleId_notlike": "9_____" }, { "ruleId_notlike": "uri-9_____" }] }] }] }] }, "limit": 1000, "activityFilter": { "AND": [{ "datetime_geq": "%s", "datetime_leq": "%s" }, { "ruleId_neq": "000000000000000" }, { "ruleId_neq": "000000000000000" }, { "ruleId_neq": "000000000000000" }, { "ruleId_neq": "000000000000000" }, { "AND": [{ "action_neq": "challenge_solved" }, { "action_neq": "challenge_failed" }, { "action_neq": "challenge_bypassed" }, { "action_neq": "jschallenge_solved" }, { "action_neq": "jschallenge_failed" }, { "action_neq": "jschallenge_bypassed" }, { "action_neq": "managed_challenge_skipped" }, { "action_neq": "managed_challenge_non_interactive_solved" }, { "action_neq": "managed_challenge_interactive_solved" }, { "action_neq": "managed_challenge_bypassed" }, { "OR": [{ "ruleId_like": "999___" }, { "ruleId_like": "900___" }, { "ruleId": "981176" }, { "AND": [{ "ruleId_notlike": "9_____" }, { "ruleId_notlike": "uri-9_____" }] }] }] }] }},"query": "query ActivityLogQuery($zoneTag: string, $filter: FirewallEventsAdaptiveGroupsFilter_InputObject, $activityFilter: FirewallEventsAdaptiveFilter_InputObject, $limit: int64!) {viewer { zones(filter: { zoneTag: $zoneTag }) { total: firewallEventsAdaptiveByTimeGroups(limit: 1, filter: $filter) { count avg { sampleInterval __typename } __typename } activity: firewallEventsAdaptive(filter: $activityFilter, limit: $limit, orderBy: [datetime_DESC, rayName_DESC, matchIndex_ASC]) { action clientIP clientRequestPath clientRequestQuery datetime rayName ruleId source userAgent __typename } __typename } __typename}}"}'
-	s = datetime.datetime.now() - datetime.timedelta(minutes=minutes)
+	s = datetime.datetime.now() - datetime.timedelta(minutes=minutes) + time_zone_d
 	s = s.isoformat("T") + "Z"
-	e = datetime.datetime.now()
+	e = datetime.datetime.now() + time_zone_d
 	e = e.isoformat("T") + "Z"
 	data = data % (s,e,s,e)
 	url = "https://api.cloudflare.com/client/v4/graphql"
@@ -89,6 +90,6 @@ e = datetime.datetime.now() - datetime.timedelta(minutes=180)#How much time the 
 
 for banned_id in cf_bans:
 	create = cf_bans[banned_id]
-	create = datetime.datetime.strptime(create[0:19], '%Y-%m-%dT%H:%M:%S') - datetime.timedelta(minutes=180)#My timezone is GMT-3 so i need to fix cloudflare timezone
+	create = datetime.datetime.strptime(create[0:19], '%Y-%m-%dT%H:%M:%S') - time_zone_d
 	if(create < e):
 		cf_delete_ban(banned_id)
